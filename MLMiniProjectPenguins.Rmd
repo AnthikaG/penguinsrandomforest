@@ -1,0 +1,129 @@
+---
+title: "ML Mini Project Penguins"
+output: html_notebook
+---
+
+
+```{r}
+
+#libraries
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(caret)
+library(palmerpenguins)   
+library(randomForest)
+library(ggthemes)
+```
+
+```{r}
+#shows the chart
+view(penguins)
+```
+
+```{r}
+
+#plots the data onto a scatter plot
+ggplot(
+  data = penguins,
+  mapping = aes(x = flipper_length_mm, y = body_mass_g)
+) +
+  geom_point(aes(color = species, shape = species)) +
+  geom_smooth(method = "lm") +
+  labs(
+    title = "Body mass and flipper length",
+    subtitle = "Dimensions for Adelie, Chinstrap, and Gentoo Penguins",
+    x = "Flipper length (mm)", y = "Body mass (g)",
+    color = "Species", shape = "Species"
+  ) +
+  scale_color_colorblind()
+```
+```{r}
+# Handle missing values
+penguins <- penguins %>%
+  mutate(across(c(bill_length_mm, bill_depth_mm, flipper_length_mm, body_mass_g), ~ifelse(is.na(.), mean(., na.rm = TRUE), .))) %>%
+  drop_na(sex)
+```
+
+
+```{r}
+# Create categorical variables
+penguins$sex <- as.factor(penguins$sex)
+penguins$island <- as.factor(penguins$island)
+penguins$species <- as.factor(penguins$species)
+
+```
+
+
+```{r}
+# Split the data into training and testing sets
+set.seed(42)
+trainIndex <- createDataPartition(penguins$species, p = .8,  list = FALSE, times = 1)
+penguinsTrain <- penguins[ trainIndex,]
+penguinsTest  <- penguins[-trainIndex,]
+```
+
+
+```{r}
+# Train a Random Forest model
+rf_model <- randomForest(species ~ ., data = penguinsTrain, importance=TRUE)
+```
+
+```{r}
+# Make predictions
+predictions <- predict(rf_model, penguinsTest)
+```
+
+
+```{r}
+# Evaluate the model
+confusionMatrix(predictions, penguinsTest$species)
+```
+
+```{r}
+# Function used in order to predict species on new data
+predict_penguin_species <- function(new_data, model) {
+  predict(model, new_data)
+}
+```
+
+```{r}
+#testing
+#Example of a new penguin used to test results
+new_penguin_data <- data.frame(
+  island = factor('Torgersen', levels = levels(penguins$island)),
+  bill_length_mm = 39.5,
+  bill_depth_mm = 17.4,
+  flipper_length_mm = 186.0,
+  body_mass_g = 3700.0,
+  sex = factor('female', levels = (penguins$sex)),
+  year = 2007
+)
+```
+
+
+```{r}
+
+# Predict the type of penguin for the new data point
+predicted_species <- predict_penguin_species(new_penguin_data, rf_model)
+print(predicted_species)
+
+```
+```{r}
+new_penguin_data <- data.frame(
+  island = factor('Torgersen', levels = levels(penguins$island)),
+  bill_length_mm = 45.0,
+  bill_depth_mm = 14.0,
+  flipper_length_mm = 210.0,
+  body_mass_g = 4500.0,
+  sex = factor('male', levels = levels(penguins$sex)),
+  year = 2007
+)
+```
+
+```{r}
+# Predict the type of penguin for the new data point
+predicted_species <- predict_penguin_species(new_penguin_data, rf_model)
+print(predicted_species)
+```
+
